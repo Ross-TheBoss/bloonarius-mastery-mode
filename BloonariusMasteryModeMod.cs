@@ -24,6 +24,8 @@ using BTD_Mod_Helper.Api.ModOptions;
 using System.Collections.Generic;
 
 using BTD_Mod_Helper.UI.Modded;
+using Il2CppAssets.Scripts.Simulation.Track.RoundManagers;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 
 [assembly: MelonInfo(typeof(BloonariusMasteryMode.BloonariusMasteryModeMod), BloonariusMasteryMode.ModHelperData.Name, BloonariusMasteryMode.ModHelperData.Version, BloonariusMasteryMode.ModHelperData.RepoOwner)]
 [assembly: MelonGame("Ninja Kiwi", "BloonsTD6")]
@@ -55,7 +57,7 @@ namespace BloonariusMasteryMode
 
             // Upgrade all freeplay bloons
             foreach (FreeplayBloonGroupModel freeplayGroup in InGame.instance.bridge.Model.freeplayGroups){
-                string line = freeplayGroup.name;
+                string line;
                 if (freeplayGroup.bounds.LengthSafe() > 0){
                     FreeplayBloonGroupModel.Bounds bounds = freeplayGroup.bounds.First();
                     if (bounds.lowerBounds >= 141){
@@ -67,8 +69,13 @@ namespace BloonariusMasteryMode
                             freeplayGroup.group.bloon = ModContent.BloonID<EliteBloonarius>();
                         }
 
+                        line = freeplayGroup.name;
                         line += " - Promoted!";
+                    } else {
+                        line = freeplayGroup.name;
                     }
+                } else {
+                    line = freeplayGroup.name;
                 }
 
                 LoggerInstance.Msg(line);
@@ -280,6 +287,38 @@ namespace BloonariusMasteryMode
             }
         }
 
+        [HarmonyPatch(typeof(FreeplayRoundManager), nameof(FreeplayRoundManager.GetRoundEmissions))]
+        public class FreeplayRoundManager_GetRoundEmissionsHook {
+            [HarmonyPostfix]
+            public static void Postfix(FreeplayRoundManager __instance, int roundArrayIndex, ref Il2CppReferenceArray<BloonEmissionModel> __result){
+                // Prevent the RBE limit from stopping 2 EliteBloonarius spawning on round 200.
+                if (!IsMasteryModeEnabled()){
+                    return;
+                }
+
+                if ((roundArrayIndex+1) == 200){
+                    int i = 0;
+                    int targetIndex = 0;
+                    while (true){
+                        try
+                        {
+                            var bounds = __instance.freeplayGroups[i].bounds.First();
+                            if ((bounds.lowerBounds == 200) && (bounds.upperBounds == 200)){
+                                targetIndex = i;
+                                break;
+                            }
+                        } catch (IndexOutOfRangeException) {
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    __result = __instance.freeplayGroups[targetIndex].bloonEmissions;
+                }
+            }
+        }
+
         public class Bloonarius : ModBloon 
         {
             public override string BaseBloon => BloonType.Bloonarius3;
@@ -355,28 +394,29 @@ namespace BloonariusMasteryMode
             public override string BaseRoundSet => RoundSetType.Default;
             public override int DefinedRounds => BaseRounds.Count;
             public override string DisplayName => "Mastery Mode";
-            // public override bool CustomHints => true;
+            public override bool CustomHints => true;
             public override SpriteReference IconReference => ModContent.GetSpriteReference<BloonariusMasteryModeMod>("MasteryModeButton")!;
 
-            // private readonly System.Collections.Generic.Dictionary<int, string> hints = new()
-            // {
-            //     {1, "Mastery mode... red bloons becomes blue bloons."},
-            //     {3, "Blue bloons become green bloons."},
-            //     {7, "Green bloons become yellow bloons."},
-            //     {12, "I think you get the point."},
-            //     {38, "First 2 MOAB-Class Bloons next round."},
-            //     {40, "MOABs become BFBs..."},
-            //     {46, "Fortified MOABs coming up next."},
-            //     {55, "BTD6 is awesome. Life is awesome too. Don't forget to have a break sometimes and do something else. Then play more BTD6!"},
-            //     {60, "What is a DDT Bloon you may ask? Like a MOAB crossed with a Pink, Camo, Black and Lead Bloon. In all the bad ways."},
-            //     {63, "Next level will be hard. Really hard."},
-            //     {80, "No ZOMGs so far... not too BAD was it?"},
-            //     {85, "It's about to get worse though..."},
-            //     {97, "Fortified BADs - as bad as it gets... right?"},
-            //     {100, "The final round. Throw everything you've got at the Tier 3 Bloonarius. You won't make a dent."},
-            //     {101, "Congratulations on beating round 100! Enjoy your reward!"},
-            //     {140, "Only the BTD6 elite can beat this round."},
-            // };
+            private readonly System.Collections.Generic.Dictionary<int, string> hints = new()
+            {
+                {1, "Mastery mode... red bloons become blue bloons."},
+                {2, "Blue bloons become green bloons."},
+                {5, "Green bloons become yellow bloons."},
+                {11, "I think you get the point."},
+                {37, "First 2 MOAB-Class Bloons next round."},
+                {39, "MOABs become BFBs..."},
+                {45, "Fortified MOABs coming up next."},
+                {54, "BTD6 is awesome. Life is awesome too. Don't forget to have a break sometimes and do something else. Then play more BTD6!"},
+                {59, "What is a DDT Bloon you may ask? Like a MOAB crossed with a Pink, Camo, Black and Lead Bloon. In all the bad ways."},
+                {62, "Next level will be hard. Really hard."},
+                {79, "No ZOMGs so far... not too BAD was it?"},
+                {84, "It's about to get worse though..."},
+                {96, "Fortified BADs - as bad as it gets... right?"},
+                {99, "The final round. Throw everything you've got at the Tier 3 Bloonarius. You won't make a dent."},
+                {100, "Congratulations on beating round 100! Enjoy your reward!"},
+                {139, "Only the BTD6 elite can beat the next round."},
+                {199, "This mod knows no limits."}
+            };
 
             public override void ModifyRoundModels(RoundModel roundModel, int round)
             {
@@ -394,10 +434,10 @@ namespace BloonariusMasteryMode
                 }
             }
 
-            // public override string? GetHint(int round){
-            //     return hints.GetValueOrDefault(round);
-            // }
-
+            public override string GetHint(int round){
+                Melon<BloonariusMasteryModeMod>.Logger.Msg($"Getting round {round} hint.");
+                return hints.GetValueOrDefault(round);
+            }
         }
     }
 }
