@@ -33,55 +33,6 @@ namespace BloonariusMasteryMode
 {
     public class BloonariusMasteryModeMod : BloonsTD6Mod
     {
-        // public Image? image = null;
-
-        // public override void OnMainMenu()
-        // {
-        //     base.OnMainMenu();
-        //     image = MainMenuUI.GetPlayButton().image;
-        //     image.SetSprite(VanillaSprites.WoodenRoundButton);
-        // }
-
-        // public override void OnUpdate()
-        // {
-        //     base.OnUpdate();
-        //     Console.WriteLine("Nabbing stuff!");
-        //     image?.SaveToPNG("WoodenRoundButton.png");
-        // }
-
-        public override void OnMatchStart()
-        {
-            if (!IsMasteryModeEnabled()){
-                return;
-            }
-
-            // Upgrade all freeplay bloons
-            foreach (FreeplayBloonGroupModel freeplayGroup in InGame.instance.bridge.Model.freeplayGroups){
-                string line;
-                if (freeplayGroup.bounds.LengthSafe() > 0){
-                    FreeplayBloonGroupModel.Bounds bounds = freeplayGroup.bounds.First();
-                    if (bounds.lowerBounds >= 141){
-                        freeplayGroup.group.bloon = PromoteBloon(freeplayGroup.group.bloon);
-
-                        if (freeplayGroup.group.bloon == "Bloonarius3"){
-                            freeplayGroup.group.bloon = ModContent.BloonID<Bloonarius>();
-                        } else if (freeplayGroup.group.bloon == "BloonariusElite3"){
-                            freeplayGroup.group.bloon = ModContent.BloonID<EliteBloonarius>();
-                        }
-
-                        line = freeplayGroup.name;
-                        line += " - Promoted!";
-                    } else {
-                        line = freeplayGroup.name;
-                    }
-                } else {
-                    line = freeplayGroup.name;
-                }
-
-                LoggerInstance.Msg(line);
-            }
-        }
-
         private static readonly ModSettingBool LimitMinions = new(true) {
             displayName = "Limit minion spawning"
         };
@@ -291,30 +242,21 @@ namespace BloonariusMasteryMode
         public class FreeplayRoundManager_GetRoundEmissionsHook {
             [HarmonyPostfix]
             public static void Postfix(FreeplayRoundManager __instance, int roundArrayIndex, ref Il2CppReferenceArray<BloonEmissionModel> __result){
-                // Prevent the RBE limit from stopping 2 EliteBloonarius spawning on round 200.
+                // Bypass the RBE limit by promoting bloons after selecting the bloon groups.
                 if (!IsMasteryModeEnabled()){
                     return;
                 }
 
-                if ((roundArrayIndex+1) == 200){
-                    int i = 0;
-                    int targetIndex = 0;
-                    while (true){
-                        try
-                        {
-                            var bounds = __instance.freeplayGroups[i].bounds.First();
-                            if ((bounds.lowerBounds == 200) && (bounds.upperBounds == 200)){
-                                targetIndex = i;
-                                break;
-                            }
-                        } catch (IndexOutOfRangeException) {
-                            break;
+                if ((roundArrayIndex+1) >= 141){
+                    foreach (BloonEmissionModel emissionModel in __result){
+                        emissionModel.bloon = PromoteBloon(emissionModel.bloon);
+
+                        if (emissionModel.bloon == "Bloonarius3"){
+                            emissionModel.bloon = ModContent.BloonID<Bloonarius>();
+                        } else if (emissionModel.bloon == "BloonariusElite3"){
+                            emissionModel.bloon = ModContent.BloonID<EliteBloonarius>();
                         }
-
-                        i++;
                     }
-
-                    __result = __instance.freeplayGroups[targetIndex].bloonEmissions;
                 }
             }
         }
