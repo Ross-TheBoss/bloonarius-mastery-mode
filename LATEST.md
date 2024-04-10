@@ -1,3 +1,1 @@
-- Mastery Mode is now a global toggle found on the difficulty select screen, like in BTD5. It is no longer a round set.
-- Mastery Mode can be combined with round sets such as alternative bloons rounds, to upgrade bloon ranks in any given round set.
-- Added the ability to change how many rounds early cash per pop is reduced.
+- Bug fix: round 1 now gives cash in mastery mode.
