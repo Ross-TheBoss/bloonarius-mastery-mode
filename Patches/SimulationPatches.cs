@@ -41,7 +41,7 @@ internal static class SimulationPatches {
                 Melon<BloonariusMasteryModeMod>.Logger.Msg($"Round {spawnedRound+1} (Mastery Mode) started!");
             }
             #endif
-            currentRound = spawnedRound;
+            currentRound = spawnedRound+1;
         }
     }
 
