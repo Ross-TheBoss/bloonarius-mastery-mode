@@ -1,1 +1,3 @@
-- Rounds after round 140 are no longer limited by the RBE (Red Bloon Equivalent) limit. This fixes round 200 not spawning any bloons.
+- Mastery Mode is now a global toggle found on the difficulty select screen, like in BTD5. It is no longer a round set.
+- Mastery Mode can be combined with round sets such as alternative bloons rounds, to upgrade bloon ranks in any given round set.
+- Added the ability to change how many rounds early cash per pop is reduced.
